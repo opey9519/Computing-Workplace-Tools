@@ -3,7 +3,7 @@ class Notification:
         self.id = notification_id
         self.message = message
 
-    def to_dict(self) -> dict:
+    def to_dict(self):
         return {
             "id": self.id,
             "message": self.message
