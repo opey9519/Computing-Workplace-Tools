@@ -3,7 +3,6 @@ from app.routes import main
 
 # Creates the Flask app from configuration implemented
 
-
 def create_app():
     app = Flask(__name__)
 

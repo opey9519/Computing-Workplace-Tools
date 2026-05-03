@@ -40,9 +40,14 @@ docker rm jenkins || true
 
 ## Step 3 — Start the New Jenkins Container
 
+> **Windows / Git Bash:** Git Bash converts `/var/run/docker.sock` to a Windows path,
+> which causes the container to fail with `Access is denied`. Prefix the command with
+> `MSYS_NO_PATHCONV=1` to disable that conversion.
+
 ```bash
-docker run -d \
+MSYS_NO_PATHCONV=1 docker run -d \
   --name jenkins \
+  --user root \
   -p 8080:8080 \
   -p 50000:50000 \
   -v jenkins_home:/var/jenkins_home \
@@ -50,19 +55,21 @@ docker run -d \
   jenkins-with-docker
 ```
 
-The `-v /var/run/docker.sock:/var/run/docker.sock` flag mounts the host Docker socket
-into the container, allowing the Jenkins pipeline to run `docker build` and `docker compose`.
+- `--user root` ensures Jenkins has permission to access the mounted Docker socket.
+- `-v /var/run/docker.sock:/var/run/docker.sock` gives the Jenkins pipeline access to the
+  host Docker daemon so it can run `docker build` and `docker compose`.
 
 ---
 
-## Step 4 — Verify the Container Has Docker and Python
+## Step 4 — Verify the Container Has Docker, Docker Compose, and Python
 
 ```bash
 docker exec jenkins docker --version
+docker exec jenkins docker compose version
 docker exec jenkins python3 --version
 ```
 
-Both commands should print version strings. If either fails, the image did not build
+All three commands should print version strings. If any fail, the image did not build
 correctly — re-run Step 1.
 
 ---
@@ -85,7 +92,7 @@ correctly — re-run Step 1.
 
 ---
 
-## Troubleshooting
+## Troubleshooting: Issues we found during setup and testing
 
 ### `docker: not found` (exit code 127)
 
@@ -99,18 +106,25 @@ container with the socket mounted.
 
 ### `permission denied` on `/var/run/docker.sock`
 
-**Meaning:** The Jenkins user inside the container does not have permission to access the
-mounted Docker socket.
+**Meaning:** The Jenkins process inside the container does not have permission to access
+the mounted Docker socket.
 
-**Fix (class demo workaround):**
+**Fix:** Start the container with `--user root` as shown in Step 3. This is the reliable
+solution for a local/class demo environment.
 
-```bash
-docker exec -u root jenkins chmod 666 /var/run/docker.sock
-```
+If the container is already running without `--user root`, stop and remove it, then
+restart it with the correct flags (Step 2 → Step 3).
 
-Then trigger a new build. This resets permissions on the socket so the `jenkins` user can
-reach it. Note: `chmod 666` on the socket is a local/demo shortcut — do not use this in
-a production environment.
+---
+
+### `unknown shorthand flag: 'f' in -f` during Deploy
+
+**Meaning:** The `docker compose` subcommand is not recognized. Jenkins is passing `-f`
+directly to the `docker` CLI, which does not accept that flag — meaning `compose` is not
+installed as a Docker CLI plugin inside the Jenkins container.
+
+**Fix:** Rebuild the Jenkins image using `Dockerfile.jenkins` (Step 1). The Dockerfile
+installs Docker Compose v2 as a CLI plugin so `docker compose` works as a subcommand.
 
 ---
 
@@ -153,14 +167,3 @@ docker exec jenkins <command>
 ```
 
 ---
-
-## Screenshots to Collect After a Successful Pipeline Run
-
-| # | What to capture |
-|---|---|
-| 1 | Jenkins pipeline view showing all four stages (Checkout, Build, Verify, Deploy) passing in green. |
-| 2 | Jenkins console output showing the Docker image build completing successfully. |
-| 3 | Jenkins console output showing pytest collecting and passing all tests. |
-| 4 | Jenkins console output showing Docker Compose bringing the container up. |
-| 5 | Output of `docker ps` in a terminal showing `ci_cd_notification_app` running. |
-| 6 | Browser or `curl http://localhost:5000` output showing the Flask app responding. |
