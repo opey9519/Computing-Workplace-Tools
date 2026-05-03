@@ -1,0 +1,10 @@
+services:
+  flask-app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+
+    container_name: ci_cd_notification_app
+
+    ports:
+      - "5000:5000"
