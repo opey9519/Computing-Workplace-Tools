@@ -1,23 +1,40 @@
 from app.models import Notification
 
-# Availabile Services for API Endpoints
-
 
 class NotificationService:
-    # Initializes notification pool
-    def __init__(self) -> None:
+    def __init__(self) :
         self.notifications = []
+        self.next_id = 1
 
-    # Create notification and returns as dictionary
-    def create(self, message) -> dict:
-        notification = Notification(message)
+    def create(self, message: str):
+        notification = Notification(self.next_id, message)
         self.notifications.append(notification)
+        self.next_id += 1
         return notification.to_dict()
 
-    # Get all notifications and return in dictionary format
-    def get_all(self) -> list:
-        return [n.to_dict() for n in self.notifications]
+    def get_all(self):
+        return [notification.to_dict() for notification in self.notifications]
 
-    # Add Edit by id and return edited notification in dict format
+    def get_by_id(self, notification_id: int):
+        for notification in self.notifications:
+            if notification.id == notification_id:
+                return notification
+        return None
 
-    # Add Delete by id and return deleted notification
+    def update(self, notification_id: int, message: str):
+        notification = self.get_by_id(notification_id)
+
+        if notification is None:
+            return None
+
+        notification.message = message
+        return notification.to_dict()
+
+    def delete(self, notification_id: int):
+        notification = self.get_by_id(notification_id)
+
+        if notification is None:
+            return None
+
+        self.notifications.remove(notification)
+        return notification.to_dict()
